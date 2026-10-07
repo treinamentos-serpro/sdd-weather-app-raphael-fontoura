@@ -1,79 +1,79 @@
 import { useState } from 'react';
-import type { Unit } from './types/weather';
-import { useWeather } from './hooks/useWeather';
-import SearchBar from './components/SearchBar';
-import UnitToggle from './components/UnitToggle';
+import CitySearch from './components/CitySearch';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
-import LoadingState from './components/states/LoadingState';
-import ErrorState from './components/states/ErrorState';
-import EmptyState from './components/states/EmptyState';
+import QueryState from './components/QueryState';
+import UnitToggle from './components/UnitToggle';
+import { useCitySearch } from './hooks/useCitySearch';
+import { useWeather } from './hooks/useWeather';
+import type { City, Unit } from './lib/types';
 
-/**
- * WeatherView — aplicação completa de previsão do tempo.
- *
- * Construída ao longo do treinamento de Spec-Driven Development com GitHub
- * Copilot, do briefing à entrega.
- */
 export default function App() {
-  const { status, data, error, query, search, retry } = useWeather();
+  const [selectedCity, setSelectedCity] = useState<City | null>(null);
   const [unit, setUnit] = useState<Unit>('celsius');
+  const citySearch = useCitySearch();
+  const weather = useWeather(selectedCity);
+  const locationDetails = [selectedCity?.region, selectedCity?.country].filter(Boolean).join(' · ');
+
+  function handleSelect(city: City): void {
+    setSelectedCity(citySearch.selectCity(city));
+  }
 
   return (
-    <div className="min-h-screen text-white">
+    <div className="min-h-screen bg-gradient-to-b from-night-800 to-night-900 font-sans text-white">
       <header className="border-b border-white/10">
-        <div className="mx-auto flex max-w-5xl flex-col gap-4 px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-2">
-            <span aria-hidden="true" className="text-2xl text-sun">
-              ☀️
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-5 sm:px-8">
+          <p className="flex items-center gap-2 text-lg font-semibold">
+            <span aria-hidden="true" className="text-sun">
+              ☀
             </span>
-            <span className="text-lg font-bold">WeatherView</span>
-          </div>
-          <div className="flex items-center gap-3">
-            <SearchBar onSearch={search} disabled={status === 'loading'} />
-            <UnitToggle unit={unit} onChange={setUnit} />
-          </div>
+            Tempo
+          </p>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-        {status === 'idle' && (
-          <EmptyState
-            title="Busque uma cidade para começar"
-            hint="Ex.: Seattle, Lisboa, São Paulo…"
+      <main className="mx-auto min-w-0 max-w-5xl space-y-8 px-4 py-8 sm:px-8 sm:py-10">
+        <section aria-labelledby="page-title" className="min-w-0 space-y-6">
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-4">
+            <h1 id="page-title" className="break-words text-2xl font-semibold sm:text-3xl">
+              Previsão do tempo
+            </h1>
+            <UnitToggle unit={unit} onUnitChange={setUnit} />
+          </div>
+          <CitySearch
+            term={citySearch.term}
+            state={citySearch.state}
+            onTermChange={citySearch.setTerm}
+            onSearch={citySearch.search}
+            onSelect={handleSelect}
+            onRetry={citySearch.retry}
           />
-        )}
+        </section>
 
-        {status === 'loading' && <LoadingState />}
+        <div className="min-h-80 min-w-0 space-y-6 border-t border-white/10 pt-6">
+          {selectedCity ? (
+            <div className="min-w-0 [overflow-wrap:anywhere]">
+              <h2 className="text-xl font-semibold text-accent-400">{selectedCity.name}</h2>
+              {locationDetails && <p className="mt-1 text-sm text-white/80">{locationDetails}</p>}
+            </div>
+          ) : (
+            <p role="status" className="text-white/80">
+              Nenhuma cidade selecionada.
+            </p>
+          )}
 
-        {status === 'empty' && (
-          <EmptyState
-            title={`Nenhuma cidade encontrada para "${query}"`}
-            hint="Verifique a grafia e tente novamente."
-          />
-        )}
-
-        {status === 'error' && error && <ErrorState message={error} onRetry={retry} />}
-
-        {status === 'success' && data && (
-          <>
-            <CurrentWeather city={data.city} current={data.current} unit={unit} />
-            <ForecastList forecast={data.forecast} unit={unit} />
-          </>
-        )}
+          {weather.state.status === 'success' ? (
+            <>
+              <CurrentWeather data={weather.state.data} unit={unit} />
+              <div className="min-w-0 border-t border-white/10 pt-6">
+                <ForecastList data={weather.state.data} unit={unit} />
+              </div>
+            </>
+          ) : (
+            <QueryState state={weather.state} operation="weather" onRetry={weather.retry} />
+          )}
+        </div>
       </main>
-
-      <footer className="py-8 text-center text-sm text-white/40">
-        Dados por{' '}
-        <a
-          href="https://open-meteo.com/"
-          target="_blank"
-          rel="noreferrer"
-          className="text-accent-400 hover:underline"
-        >
-          Open-Meteo
-        </a>
-      </footer>
     </div>
   );
 }

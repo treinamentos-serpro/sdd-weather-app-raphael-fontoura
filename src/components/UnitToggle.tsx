@@ -1,38 +1,34 @@
-import type { Unit } from '../types/weather';
+import type { Unit } from '../lib/types';
 
-interface UnitToggleProps {
-  unit: Unit;
-  onChange: (unit: Unit) => void;
+export interface UnitToggleProps {
+  unit?: Unit;
+  onUnitChange: (unit: Unit) => void;
 }
 
-/** Alternador de unidade Celsius/Fahrenheit, acessível por teclado. */
-export default function UnitToggle({ unit, onChange }: UnitToggleProps) {
+export default function UnitToggle({ unit = 'celsius', onUnitChange }: UnitToggleProps) {
   return (
-    <div
-      role="group"
-      aria-label="Unidade de temperatura"
-      className="inline-flex rounded-lg border border-white/10 bg-white/5 p-1 backdrop-blur-md"
-    >
-      <button
-        type="button"
-        aria-pressed={unit === 'celsius'}
-        onClick={() => onChange('celsius')}
-        className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-          unit === 'celsius' ? 'bg-accent-500 text-white' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        °C
-      </button>
-      <button
-        type="button"
-        aria-pressed={unit === 'fahrenheit'}
-        onClick={() => onChange('fahrenheit')}
-        className={`rounded-md px-3 py-1 text-sm font-semibold transition ${
-          unit === 'fahrenheit' ? 'bg-accent-500 text-white' : 'text-white/60 hover:text-white'
-        }`}
-      >
-        °F
-      </button>
-    </div>
+    <fieldset className="min-w-0 max-w-full text-white">
+      <legend className="sr-only">Unidade de temperatura</legend>
+      <div className="inline-flex max-w-full gap-1 rounded-lg border border-white/40 bg-night-800/80 p-1 backdrop-blur-md">
+        {(['celsius', 'fahrenheit'] as const).map((option) => (
+          <label key={option} className="min-w-0 flex-1 cursor-pointer">
+            <input
+              type="radio"
+              name="temperature-unit"
+              value={option}
+              checked={unit === option}
+              onChange={() => {
+                if (option !== unit) onUnitChange(option);
+              }}
+              className="peer sr-only"
+            />
+            <span className="flex min-h-11 items-center justify-center rounded-md px-4 font-medium peer-checked:bg-accent-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-400">
+              <span aria-hidden="true">{option === 'celsius' ? '°C' : '°F'}</span>
+              <span className="sr-only">{option === 'celsius' ? 'Celsius' : 'Fahrenheit'}</span>
+            </span>
+          </label>
+        ))}
+      </div>
+    </fieldset>
   );
 }

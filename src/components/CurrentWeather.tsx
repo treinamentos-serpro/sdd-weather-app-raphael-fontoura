@@ -1,77 +1,95 @@
-import type { CurrentWeather as CurrentWeatherType, City, Unit } from '../types/weather';
+import { useId } from 'react';
 import { formatTemperature } from '../lib/temperature';
-import { getWeatherIcon, getWeatherLabel } from '../lib/weatherCodes';
+import type { Unit, WeatherData } from '../lib/types';
+import { getWeatherLabel } from '../lib/weatherCodes';
+import { formatObservationTime, getFreshness } from '../lib/weatherDate';
 
-interface CurrentWeatherProps {
-  city: City;
-  current: CurrentWeatherType;
+export interface CurrentWeatherProps {
+  data: WeatherData;
   unit: Unit;
 }
 
-interface MetricProps {
-  icon: string;
-  label: string;
-  value: string;
-}
+const weatherSymbols: Record<number, string> = {
+  0: '☀️',
+  1: '🌤️',
+  2: '⛅',
+  3: '☁️',
+  45: '🌫️',
+  48: '🌫️',
+  51: '🌦️',
+  53: '🌦️',
+  55: '🌦️',
+  56: '🌧️',
+  57: '🌧️',
+  61: '🌧️',
+  63: '🌧️',
+  65: '🌧️',
+  66: '🌧️',
+  67: '🌧️',
+  71: '🌨️',
+  73: '🌨️',
+  75: '🌨️',
+  77: '🌨️',
+  80: '🌧️',
+  81: '🌧️',
+  82: '🌧️',
+  85: '🌨️',
+  86: '🌨️',
+  95: '⛈️',
+  96: '⛈️',
+  99: '⛈️',
+};
 
-function Metric({ icon, label, value }: MetricProps) {
+export default function CurrentWeather({ data, unit }: CurrentWeatherProps) {
+  const id = useId();
+  const current = data.current;
+  const freshness = getFreshness(current?.observedAt, data.timezone, data.fetchedAt);
+  const condition =
+    current?.conditionCode === undefined ? 'Indisponível' : getWeatherLabel(current.conditionCode);
+  const symbol =
+    current?.conditionCode === undefined ? undefined : weatherSymbols[current.conditionCode];
+  const metrics = [
+    { key: 'humidity', label: 'Umidade', value: current?.humidityPercent, suffix: '%' },
+    { key: 'wind', label: 'Vento', value: current?.windKmh, suffix: ' km/h' },
+    { key: 'pressure', label: 'Pressão', value: current?.pressureHpa, suffix: ' hPa' },
+    { key: 'precipitation', label: 'Precipitação', value: current?.precipitationMm, suffix: ' mm' },
+  ];
+
   return (
-    <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-4 py-3 backdrop-blur-md">
-      <span aria-hidden="true" className="text-xl">
-        {icon}
-      </span>
-      <div>
-        <p className="text-xs text-white/50">{label}</p>
-        <p className="font-semibold">{value}</p>
+    <section aria-labelledby={`${id}-heading`} className="min-w-0 font-sans text-white">
+      <header className="flex flex-wrap items-center gap-3">
+        <h2 id={`${id}-heading`} className="text-xl font-semibold">
+          {freshness === 'fresh' ? 'Clima atual' : 'Condições observadas'}
+        </h2>
+        {freshness !== 'fresh' && (
+          <span className="max-w-full rounded border border-white/10 bg-white/5 px-2 py-1 text-sm text-sun backdrop-blur-md">
+            {freshness === 'stale' ? 'Desatualizado' : 'Atualidade não verificável'}
+          </span>
+        )}
+      </header>
+      <div className="my-6 min-w-0">
+        <p className="text-sm text-accent-400">Temperatura</p>
+        <p className="break-words text-4xl font-semibold sm:text-5xl">
+          {formatTemperature(current?.temperatureC, unit)}
+        </p>
+        <p className="mt-2 flex items-center gap-2 text-lg">
+          {symbol && <span aria-hidden="true">{symbol}</span>}
+          <span>{condition}</span>
+        </p>
       </div>
-    </div>
-  );
-}
-
-/** Seção "hero" com as condições atuais da cidade selecionada. */
-export default function CurrentWeather({ city, current, unit }: CurrentWeatherProps) {
-  const location = [city.admin1, city.country].filter(Boolean).join(', ');
-
-  return (
-    <section
-      aria-label="Clima atual"
-      className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-md shadow-glass md:p-8"
-    >
-      <div className="flex flex-col gap-6 md:flex-row md:items-start md:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold md:text-3xl">{city.name}</h2>
-          {location && <p className="text-white/60">{location}</p>}
-
-          <div className="mt-6 flex items-center gap-4">
-            <span aria-hidden="true" className="text-6xl">
-              {getWeatherIcon(current.weatherCode)}
-            </span>
-            <span className="text-6xl font-light md:text-7xl">
-              {formatTemperature(current.temperature, unit)}
-            </span>
+      <p className="mb-4 break-words text-sm text-white/80">
+        Horário de observação: {formatObservationTime(current?.observedAt, data.timezone)}
+      </p>
+      <dl className="grid grid-cols-2 gap-x-4 sm:grid-cols-4">
+        {metrics.map(({ key, label, value, suffix }) => (
+          <div key={key} className="min-w-0 border-t border-white/10 py-3">
+            <dt className="break-words text-sm text-white/80">{label}</dt>
+            <dd className="mt-1 break-words text-base font-medium">
+              {value === undefined ? 'Indisponível' : `${value}${suffix}`}
+            </dd>
           </div>
-          <p className="mt-2 text-white/70">{getWeatherLabel(current.weatherCode)}</p>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Metric icon="💧" label="Umidade" value={`${Math.round(current.humidity)}%`} />
-          <Metric
-            icon="💨"
-            label="Vento"
-            value={`${Math.round(current.windSpeed)} km/h`}
-          />
-          <Metric
-            icon="🌧️"
-            label="Precipitação"
-            value={`${current.precipitation} mm`}
-          />
-          <Metric
-            icon="📊"
-            label="Pressão"
-            value={`${Math.round(current.pressure)} hPa`}
-          />
-        </div>
-      </div>
+        ))}
+      </dl>
     </section>
   );
 }
