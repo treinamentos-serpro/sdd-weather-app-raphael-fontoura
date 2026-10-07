@@ -1,106 +1,145 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { searchCities, getWeather, WeatherServiceError } from '../../src/services/weatherService';
-import type { City } from '../../src/types/weather';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { City } from '../../src/lib/types';
+import { getWeather } from '../../src/services/weatherService';
 
-const CITY: City = {
-  id: 1,
-  name: 'Seattle',
-  country: 'Estados Unidos',
-  admin1: 'Washington',
-  latitude: 47.6,
-  longitude: -122.33,
+const city: City = {
+  name: 'Recife',
+  latitude: -8.05,
+  longitude: -34.9,
 };
 
-function mockFetchOnce(body: unknown, ok = true) {
-  return vi.fn().mockResolvedValue({
-    ok,
-    json: async () => body,
-  } as Response);
+function createResponse(payload: unknown, status = 200): Response {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: vi.fn().mockResolvedValue(payload),
+  } as unknown as Response;
 }
 
-describe('weatherService', () => {
-  beforeEach(() => {
-    vi.restoreAllMocks();
-  });
-  afterEach(() => {
-    vi.unstubAllGlobals();
-  });
+function stubFetch(implementation: typeof fetch): ReturnType<typeof vi.fn<typeof fetch>> {
+  const fetchMock = vi.fn(implementation);
+  vi.stubGlobal('fetch', fetchMock);
+  return fetchMock;
+}
 
-  describe('searchCities', () => {
-    it('retorna lista vazia para input vazio sem chamar a rede', async () => {
-      const fetchSpy = vi.fn();
-      vi.stubGlobal('fetch', fetchSpy);
-      const result = await searchCities('   ');
-      expect(result).toEqual([]);
-      expect(fetchSpy).not.toHaveBeenCalled();
-    });
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
 
-    it('mapeia resultados de geocoding', async () => {
-      vi.stubGlobal(
-        'fetch',
-        mockFetchOnce({
-          results: [
-            {
-              id: 1,
-              name: 'Seattle',
-              country: 'Estados Unidos',
-              admin1: 'Washington',
-              latitude: 47.6,
-              longitude: -122.33,
-            },
-          ],
-        }),
-      );
-      const result = await searchCities('Seattle');
-      expect(result).toHaveLength(1);
-      expect(result[0].name).toBe('Seattle');
-    });
+describe('getWeather', () => {
+  it('envia coordenadas, unidades e todos os campos current e daily exigidos', async () => {
+    const fetchMock = stubFetch(async () => createResponse({ timezone: 'America/Recife' }));
 
-    it('retorna vazio quando não há results', async () => {
-      vi.stubGlobal('fetch', mockFetchOnce({}));
-      expect(await searchCities('xyzxyz')).toEqual([]);
-    });
+    await getWeather(city);
 
-    it('lança erro tipado em resposta não-ok', async () => {
-      vi.stubGlobal('fetch', mockFetchOnce({}, false));
-      await expect(searchCities('Seattle')).rejects.toBeInstanceOf(WeatherServiceError);
-    });
+    const requestUrl = new URL(String(fetchMock.mock.calls[0]?.[0]));
+    expect(requestUrl.origin + requestUrl.pathname).toBe('https://api.open-meteo.com/v1/forecast');
+    expect(requestUrl.searchParams.get('latitude')).toBe('-8.05');
+    expect(requestUrl.searchParams.get('longitude')).toBe('-34.9');
+    expect(requestUrl.searchParams.get('timezone')).toBe('auto');
+    expect(requestUrl.searchParams.get('forecast_days')).toBe('5');
+    expect(requestUrl.searchParams.get('temperature_unit')).toBe('celsius');
+    expect(requestUrl.searchParams.get('wind_speed_unit')).toBe('kmh');
+    expect(requestUrl.searchParams.get('precipitation_unit')).toBe('mm');
+    expect(requestUrl.searchParams.get('current')?.split(',')).toEqual([
+      'temperature_2m',
+      'relative_humidity_2m',
+      'weather_code',
+      'wind_speed_10m',
+      'surface_pressure',
+      'precipitation',
+    ]);
+    expect(requestUrl.searchParams.get('daily')?.split(',')).toEqual([
+      'weather_code',
+      'temperature_2m_max',
+      'temperature_2m_min',
+      'precipitation_probability_max',
+      'precipitation_sum',
+      'wind_speed_10m_max',
+    ]);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
   });
 
-  describe('getWeather', () => {
-    it('mapeia current e daily para WeatherData', async () => {
-      vi.stubGlobal(
-        'fetch',
-        mockFetchOnce({
-          current: {
-            time: '2026-06-16T12:00',
-            temperature_2m: 18,
-            relative_humidity_2m: 80,
-            wind_speed_10m: 10,
-            surface_pressure: 1015,
-            precipitation: 0,
-            weather_code: 3,
-          },
-          daily: {
-            time: ['2026-06-16', '2026-06-17', '2026-06-18', '2026-06-19', '2026-06-20'],
-            weather_code: [3, 61, 80, 1, 0],
-            temperature_2m_max: [20, 19, 22, 24, 25],
-            temperature_2m_min: [12, 11, 13, 14, 15],
-            precipitation_probability_max: [20, 90, 70, 10, null],
-          },
-        }),
-      );
+  it('mapeia e preserva dados parciais sem preencher campos ausentes', async () => {
+    stubFetch(async () =>
+      createResponse({
+        timezone: 'America/Recife',
+        current: { temperature_2m: 23.4 },
+        daily: {
+          time: ['2026-10-07'],
+          precipitation_sum: [0],
+          wind_speed_10m_max: [null],
+        },
+      }),
+    );
 
-      const data = await getWeather(CITY);
-      expect(data.current.temperature).toBe(18);
-      expect(data.forecast).toHaveLength(5);
-      // precipitação nula vira 0 (resposta parcial)
-      expect(data.forecast[4].precipitationProbability).toBe(0);
+    const result = await getWeather(city);
+
+    expect(result?.city).toEqual(city);
+    expect(result?.timezone).toBe('America/Recife');
+    expect(result?.current).toEqual({ temperatureC: 23.4 });
+    expect(result?.forecast).toEqual([{ date: '2026-10-07', precipitationMm: 0 }]);
+    expect(result?.fetchedAt).toEqual(expect.any(String));
+  });
+
+  it('retorna undefined quando a resposta valida nao contem dados meteorologicos', async () => {
+    stubFetch(async () => createResponse({ timezone: 'America/Recife', daily: { time: [] } }));
+
+    await expect(getWeather(city)).resolves.toBeUndefined();
+  });
+
+  it('classifica erros HTTP como api', async () => {
+    stubFetch(async () => createResponse({}, 503));
+
+    await expect(getWeather(city)).rejects.toMatchObject({
+      name: 'WeatherServiceError',
+      kind: 'api',
+      message: expect.any(String),
+    });
+  });
+
+  it('classifica falhas de rede e nao repete a consulta', async () => {
+    const fetchMock = stubFetch(async () => {
+      throw new TypeError('detalhe interno');
     });
 
-    it('lança erro quando a resposta está incompleta', async () => {
-      vi.stubGlobal('fetch', mockFetchOnce({ current: null, daily: null }));
-      await expect(getWeather(CITY)).rejects.toBeInstanceOf(WeatherServiceError);
+    await expect(getWeather(city)).rejects.toMatchObject({
+      kind: 'network',
+      message: 'Não foi possível conectar ao serviço de previsão.',
     });
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    [
+      'JSON invalido',
+      async () => ({ ...createResponse({}), json: vi.fn().mockRejectedValue(new SyntaxError()) }),
+    ],
+    ['estrutura invalida', async () => createResponse({ current: {} })],
+  ])('classifica %s como invalid-response', async (_label, responseFactory) => {
+    stubFetch(responseFactory);
+
+    await expect(getWeather(city)).rejects.toMatchObject({ kind: 'invalid-response' });
+  });
+
+  it('aborta em 10 segundos e classifica timeout separadamente', async () => {
+    vi.useFakeTimers();
+    stubFetch(() => new Promise<Response>(() => {}));
+    const promise = getWeather(city);
+    const rejection = expect(promise).rejects.toMatchObject({ kind: 'timeout' });
+
+    await vi.advanceTimersByTimeAsync(10_000);
+    await rejection;
+  });
+
+  it('preserva cancelamento externo como AbortError', async () => {
+    const controller = new AbortController();
+    stubFetch(() => new Promise<Response>(() => {}));
+    const promise = getWeather(city, controller.signal);
+    const rejection = expect(promise).rejects.toMatchObject({ name: 'AbortError' });
+
+    controller.abort();
+    await rejection;
   });
 });
