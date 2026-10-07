@@ -25,8 +25,9 @@ export default function CitySearch({
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-900';
 
   return (
-    <div aria-busy={state.status === 'loading'} className="min-w-0 bg-night-900 text-white">
+    <div className="min-w-0 bg-night-900 text-white">
       <form
+        aria-busy={state.status === 'loading'}
         className="space-y-2"
         onSubmit={(event) => {
           event.preventDefault();
@@ -49,7 +50,7 @@ export default function CitySearch({
             aria-label="Buscar cidade"
             title="Buscar cidade"
             disabled={!term.trim() || state.status === 'loading'}
-            className={`h-11 w-11 shrink-0 rounded-lg border border-white/40 bg-night-800 hover:bg-night-700 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-night-700 ${focusStyle}`}
+            className={`h-11 w-11 shrink-0 rounded-lg border border-white/40 bg-night-800 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-night-700 ${focusStyle}`}
           >
             <span aria-hidden="true">🔍</span>
           </button>
