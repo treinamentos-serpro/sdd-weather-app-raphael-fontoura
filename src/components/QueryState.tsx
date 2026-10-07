@@ -30,13 +30,16 @@ export default function QueryState({ state, operation, onRetry }: QueryStateProp
   }
 
   return (
-    <div className="min-w-0 max-w-full space-y-2 text-white [overflow-wrap:anywhere]">
+    <div
+      aria-busy={state.status === 'loading'}
+      className="min-w-0 max-w-full space-y-2 text-white [overflow-wrap:anywhere]"
+    >
       <p role={state.status === 'error' ? 'alert' : 'status'}>{text}</p>
       {state.status === 'error' && (
         <button
           type="button"
           onClick={() => onRetry()}
-          className="min-h-11 max-w-full whitespace-normal rounded-lg border border-white/30 bg-night-800 px-3 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-900"
+          className="min-h-11 max-w-full whitespace-normal rounded-lg border border-white/40 bg-night-800 px-3 py-2 hover:bg-night-700 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-900"
         >
           Tentar novamente
         </button>

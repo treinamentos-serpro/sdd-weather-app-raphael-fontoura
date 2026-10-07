@@ -49,11 +49,23 @@ const cityFixtures = [
     timezone: 'Asia/Tokyo',
     temperature: 22,
   },
+  {
+    id: 3450001,
+    name: "São João d'El-Rei",
+    latitude: -21.14,
+    longitude: -44.26,
+    region: 'Minas Gerais',
+    country: 'Brasil',
+    country_code: 'BR',
+    timezone: 'America/Sao_Paulo',
+    temperature: 19,
+  },
 ];
 
 interface MockOptions {
   failedSearches?: number;
   failedForecasts?: number;
+  partialForecast?: boolean;
 }
 
 interface MockRequests {
@@ -98,6 +110,27 @@ async function mockOpenMeteo(page: Page, options: MockOptions = {}): Promise<Moc
         return;
       }
       const dates = getLocalDates(city.timezone, reference);
+      if (options.partialForecast) {
+        await route.fulfill({
+          json: {
+            timezone: city.timezone,
+            current: {
+              time: `${dates[0]}T12:00`,
+              temperature_2m: null,
+              weather_code: null,
+              relative_humidity_2m: null,
+              wind_speed_10m: null,
+            },
+            daily: {
+              time: dates,
+              temperature_2m_min: dates.map(() => null),
+              weather_code: dates.map(() => null),
+              precipitation_sum: dates.map(() => null),
+            },
+          },
+        });
+        return;
+      }
       await route.fulfill({
         json: {
           timezone: city.timezone,
@@ -266,6 +299,57 @@ test.describe('Integração Open-Meteo em viewport mobile', () => {
     expect(requests.geocoding).toHaveLength(2);
     expect(requests.forecast).toHaveLength(0);
     await expectNoOverflow(page);
+  });
+
+  test('termo com apenas espaços não inicia geocoding nem forecast', async ({ page }) => {
+    const requests = await mockOpenMeteo(page);
+    await page.goto('/');
+    const input = page.getByRole('textbox', { name: 'Cidade' });
+    await input.fill('   ');
+    await expect(page.getByRole('button', { name: 'Buscar cidade' })).toBeDisabled();
+    await input.press('Enter');
+
+    expect(requests.geocoding).toHaveLength(0);
+    expect(requests.forecast).toHaveLength(0);
+    await expect(page.getByRole('region', { name: 'Clima atual' })).toHaveCount(0);
+    await expect(page.getByRole('region', { name: 'Previsão diária' })).toHaveCount(0);
+  });
+
+  test('preserva caracteres especiais e aguarda a seleção antes do forecast', async ({ page }) => {
+    const requests = await mockOpenMeteo(page);
+    await page.goto('/');
+    const term = "São João d'El-Rei";
+    await searchFor(page, term);
+    const suggestion = page.getByRole('button', {
+      name: "São João d'El-Rei Minas Gerais Brasil",
+      exact: true,
+    });
+    await expect(suggestion).toBeVisible();
+
+    expect(requests.geocoding).toHaveLength(1);
+    expect(new URL(requests.geocoding[0]).searchParams.get('name')).toBe(term);
+    expect(requests.forecast).toHaveLength(0);
+
+    await suggestion.click();
+    await expect(page.getByRole('heading', { name: term, exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Clima atual' })).toBeVisible();
+    expect(requests.forecast).toHaveLength(1);
+    expect(new URL(requests.forecast[0]).searchParams.get('latitude')).toBe('-21.14');
+  });
+
+  test('marca campos meteorológicos ausentes e nulos como indisponíveis', async ({ page }) => {
+    const requests = await mockOpenMeteo(page, { partialForecast: true });
+    await page.goto('/');
+    await selectCity(page, 'Paris', 'Paris Île-de-France France');
+
+    const current = page.getByRole('region', { name: 'Clima atual' });
+    const forecast = page.getByRole('region', { name: 'Previsão diária' });
+    await expect(current.getByText('Indisponível', { exact: true })).toHaveCount(6);
+    await expect(forecast.getByText('Indisponível', { exact: true })).toHaveCount(20);
+    const renderedText = await page.getByRole('main').innerText();
+    expect(renderedText).not.toMatch(/undefined|NaN|null/);
+    expect(requests.geocoding).toHaveLength(1);
+    expect(requests.forecast).toHaveLength(1);
   });
 
   test('permite repetir a busca pelo mesmo termo e o forecast pela mesma cidade', async ({

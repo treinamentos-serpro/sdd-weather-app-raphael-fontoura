@@ -22,7 +22,7 @@ export default function UnitToggle({ unit = 'celsius', onUnitChange }: UnitToggl
               }}
               className="peer sr-only"
             />
-            <span className="flex min-h-11 items-center justify-center rounded-md px-4 font-medium peer-checked:bg-accent-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-400">
+            <span className="flex min-h-11 items-center justify-center rounded-md px-4 font-medium hover:bg-white/10 peer-checked:bg-accent-600 peer-checked:hover:bg-accent-600 peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-accent-400">
               <span aria-hidden="true">{option === 'celsius' ? '°C' : '°F'}</span>
               <span className="sr-only">{option === 'celsius' ? 'Celsius' : 'Fahrenheit'}</span>
             </span>

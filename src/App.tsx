@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import CitySearch from './components/CitySearch';
 import CurrentWeather from './components/CurrentWeather';
 import ForecastList from './components/ForecastList';
@@ -13,7 +13,12 @@ export default function App() {
   const [unit, setUnit] = useState<Unit>('celsius');
   const citySearch = useCitySearch();
   const weather = useWeather(selectedCity);
+  const cityHeadingRef = useRef<HTMLHeadingElement>(null);
   const locationDetails = [selectedCity?.region, selectedCity?.country].filter(Boolean).join(' · ');
+
+  useEffect(() => {
+    if (selectedCity) cityHeadingRef.current?.focus();
+  }, [selectedCity]);
 
   function handleSelect(city: City): void {
     setSelectedCity(citySearch.selectCity(city));
@@ -50,10 +55,19 @@ export default function App() {
           />
         </section>
 
-        <div className="min-h-80 min-w-0 space-y-6 border-t border-white/10 pt-6">
+        <div
+          aria-busy={weather.state.status === 'loading'}
+          className="min-h-80 min-w-0 space-y-6 border-t border-white/10 pt-6"
+        >
           {selectedCity ? (
             <div className="min-w-0 [overflow-wrap:anywhere]">
-              <h2 className="text-xl font-semibold text-accent-400">{selectedCity.name}</h2>
+              <h2
+                ref={cityHeadingRef}
+                tabIndex={-1}
+                className="text-xl font-semibold text-accent-400"
+              >
+                {selectedCity.name}
+              </h2>
               {locationDetails && <p className="mt-1 text-sm text-white/80">{locationDetails}</p>}
             </div>
           ) : (

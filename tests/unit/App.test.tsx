@@ -112,6 +112,7 @@ describe('App', () => {
     render(<App />);
     await selectCity(user, curitiba);
     await screen.findByRole('region', { name: 'Clima atual' });
+    expect(screen.getByRole('heading', { name: 'Curitiba' })).toHaveFocus();
     expect(currentWeather().getByText('22 °C')).toBeVisible();
     expect(screen.getByRole('heading', { name: 'Curitiba' })).toBeVisible();
     expect(screen.getByText('Paraná · Brasil')).toBeVisible();
@@ -138,6 +139,7 @@ describe('App', () => {
     expect(screen.queryByRole('heading', { name: 'Curitiba' })).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Paris' })).toBeVisible();
     expect(screen.getByRole('status')).toHaveTextContent('Carregando dados meteorológicos...');
+    expect(screen.getByRole('status').closest('[aria-busy="true"]')).not.toBeNull();
     await act(async () => pending.resolve(weather(paris, 16)));
     await screen.findByRole('region', { name: 'Clima atual' });
     expect(currentWeather().getByText('16 °C')).toBeVisible();

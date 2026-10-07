@@ -25,7 +25,7 @@ export default function CitySearch({
     'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 focus-visible:ring-offset-2 focus-visible:ring-offset-night-900';
 
   return (
-    <div className="min-w-0 bg-night-900 text-white">
+    <div aria-busy={state.status === 'loading'} className="min-w-0 bg-night-900 text-white">
       <form
         className="space-y-2"
         onSubmit={(event) => {
@@ -42,14 +42,14 @@ export default function CitySearch({
             type="text"
             value={term}
             onChange={(event) => onTermChange(event.target.value)}
-            className={`min-w-0 flex-1 rounded-lg border border-white/30 bg-night-800 px-3 py-2 ${focusStyle}`}
+            className={`min-w-0 flex-1 rounded-lg border border-white/40 bg-night-800 px-3 py-2 ${focusStyle}`}
           />
           <button
             type="submit"
             aria-label="Buscar cidade"
             title="Buscar cidade"
             disabled={!term.trim() || state.status === 'loading'}
-            className={`h-11 w-11 shrink-0 rounded-lg border border-white/30 bg-night-800 disabled:opacity-50 ${focusStyle}`}
+            className={`h-11 w-11 shrink-0 rounded-lg border border-white/40 bg-night-800 hover:bg-night-700 disabled:cursor-not-allowed disabled:opacity-50 enabled:hover:bg-night-700 ${focusStyle}`}
           >
             <span aria-hidden="true">🔍</span>
           </button>
@@ -76,7 +76,7 @@ export default function CitySearch({
           <button
             type="button"
             onClick={onRetry}
-            className={`max-w-full whitespace-normal rounded-lg border border-white/30 bg-night-800 px-3 py-2 ${focusStyle}`}
+            className={`max-w-full whitespace-normal rounded-lg border border-white/40 bg-night-800 px-3 py-2 hover:bg-night-700 ${focusStyle}`}
           >
             Tentar novamente
           </button>
@@ -96,7 +96,7 @@ export default function CitySearch({
                 type="button"
                 aria-label={[city.name, city.region, city.country].filter(Boolean).join(' ')}
                 onClick={() => onSelect(city)}
-                className={`w-full min-w-0 whitespace-normal rounded-lg border border-white/20 bg-night-800 px-3 py-2 text-left [overflow-wrap:anywhere] ${focusStyle}`}
+                className={`w-full min-w-0 whitespace-normal rounded-lg border border-white/40 bg-night-800 px-3 py-2 text-left [overflow-wrap:anywhere] hover:bg-night-700 ${focusStyle}`}
               >
                 <span className="block font-medium">{city.name}</span>
                 {city.region && <span className="block text-sm">{city.region}</span>}

@@ -165,6 +165,7 @@ describe('CitySearch', () => {
   it('anuncia loading sem bloquear edicao nem permitir submissao duplicada', async () => {
     const { props, user, input } = setup({ state: { status: 'loading' } });
     expect(screen.getByRole('status')).toHaveTextContent('Buscando cidades');
+    expect(screen.getByRole('status').closest('[aria-busy="true"]')).not.toBeNull();
     expect(screen.getByRole('button', { name: 'Buscar cidade' })).toBeDisabled();
     await user.type(input, ' nova{Enter}');
     expect(input).toHaveValue('Santa Maria nova');
