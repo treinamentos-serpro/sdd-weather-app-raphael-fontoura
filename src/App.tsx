@@ -55,10 +55,7 @@ export default function App() {
           />
         </section>
 
-        <div
-          aria-busy={weather.state.status === 'loading'}
-          className="min-h-80 min-w-0 space-y-6 border-t border-white/10 pt-6"
-        >
+        <div className="min-h-80 min-w-0 space-y-6 border-t border-white/10 pt-6">
           {selectedCity ? (
             <div className="min-w-0 [overflow-wrap:anywhere]">
               <h2
@@ -76,16 +73,18 @@ export default function App() {
             </p>
           )}
 
-          {weather.state.status === 'success' ? (
-            <>
-              <CurrentWeather data={weather.state.data} unit={unit} />
-              <div className="min-w-0 border-t border-white/10 pt-6">
-                <ForecastList data={weather.state.data} unit={unit} />
-              </div>
-            </>
-          ) : (
-            <QueryState state={weather.state} operation="weather" onRetry={weather.retry} />
-          )}
+          <QueryState state={weather.state} operation="weather" onRetry={weather.retry} />
+
+          <div aria-busy={weather.state.status === 'loading'} className="min-w-0 space-y-6">
+            {weather.state.status === 'success' && (
+              <>
+                <CurrentWeather data={weather.state.data} unit={unit} />
+                <div className="min-w-0 border-t border-white/10 pt-6">
+                  <ForecastList data={weather.state.data} unit={unit} />
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </main>
     </div>

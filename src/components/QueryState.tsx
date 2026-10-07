@@ -30,10 +30,7 @@ export default function QueryState({ state, operation, onRetry }: QueryStateProp
   }
 
   return (
-    <div
-      aria-busy={state.status === 'loading'}
-      className="min-w-0 max-w-full space-y-2 text-white [overflow-wrap:anywhere]"
-    >
+    <div className="min-w-0 max-w-full space-y-2 text-white [overflow-wrap:anywhere]">
       <p role={state.status === 'error' ? 'alert' : 'status'}>{text}</p>
       {state.status === 'error' && (
         <button

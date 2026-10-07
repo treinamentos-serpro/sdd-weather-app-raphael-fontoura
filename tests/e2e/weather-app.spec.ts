@@ -115,7 +115,7 @@ async function mockOpenMeteo(page: Page, options: MockOptions = {}): Promise<Moc
           json: {
             timezone: city.timezone,
             current: {
-              time: `${dates[0]}T12:00`,
+              time: getLocalObservationTime(city.timezone),
               temperature_2m: null,
               weather_code: null,
               relative_humidity_2m: null,
@@ -135,7 +135,7 @@ async function mockOpenMeteo(page: Page, options: MockOptions = {}): Promise<Moc
         json: {
           timezone: city.timezone,
           current: {
-            time: `${dates[0]}T12:00`,
+            time: getLocalObservationTime(city.timezone),
             temperature_2m: city.temperature,
             weather_code: 0,
             relative_humidity_2m: 55,
@@ -176,6 +176,7 @@ async function selectCity(page: Page, term: string, accessibleName: string) {
   await expect(suggestion).toBeFocused();
   await suggestion.press('Enter');
   await expect(page.getByRole('heading', { name: term, exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: term, exact: true })).toBeFocused();
   await expect(page.getByRole('region', { name: 'Clima atual' })).toBeVisible();
   await expect(
     page.getByRole('region', { name: 'Previsão diária' }).getByRole('listitem'),
@@ -194,6 +195,20 @@ async function expectNoOverflow(page: Page) {
     client: document.documentElement.clientWidth,
   }));
   expect(sizes.scroll).toBeLessThanOrEqual(sizes.client);
+}
+
+function getLocalObservationTime(timezone: string): string {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: timezone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date(reference));
+  const getPart = (type: string) => parts.find((part) => part.type === type)?.value ?? '';
+  return `${getPart('year')}-${getPart('month')}-${getPart('day')}T${getPart('hour')}:${getPart('minute')}`;
 }
 
 async function forecastDates(forecast: Locator): Promise<string[]> {
